@@ -62,4 +62,4 @@ jobs:
           done
 
       - name: Run tests
-        run: pytest -q
+        run: PYTHONPATH=. pytest -q
