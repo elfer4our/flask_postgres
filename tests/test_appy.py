@@ -17,7 +17,7 @@ def test_db_connect():
 
 def test_http_root():
     # Import the Flask app and do a simple HTTP request to "/"
-    from app.app import app
+    from app import app
     with app.test_client() as c:
         r = c.get("/")
         assert r.status_code == 200
