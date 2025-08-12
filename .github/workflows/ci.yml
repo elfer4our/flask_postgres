@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        # Healthcheck so we don't race the DB
+        options: >-
+          --health-cmd="pg_isready -U user -d testdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: testdb
+      DB_USER: user
+      DB_PASS: pass
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install pytest psycopg2-binary
+
+      - name: Wait for Postgres
+        shell: bash
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"; then
+              echo "Postgres is ready"
+              break
+            fi
+            echo "Waiting for Postgres ($i/30)..."
+            sleep 1
+          done
+
+      - name: Run tests
+        run: pytest -q
